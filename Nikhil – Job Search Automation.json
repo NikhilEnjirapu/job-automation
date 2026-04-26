@@ -1,0 +1,352 @@
+{
+  "name": "Nikhil – Job Search Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "7e7e9e15-b17d-4b7f-ae71-044f224e4902",
+      "name": "Every 3 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -464,
+        112
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "jsCode": "const resumeProfile = {\n  name: 'Nikhil',\n  currentTitle: 'Fresher - Computer Science Engineer',\n  experienceYears: 0,\n  skills: [\n    'React', 'JavaScript', 'HTML', 'CSS', 'Tailwind CSS',\n    'Node.js', 'Spring Boot', 'REST APIs',\n    'MongoDB', 'MySQL',\n    'Java', 'Python',\n    'Git', 'Postman',\n    'Machine Learning', 'NLP', 'RAG', 'LLM'\n  ],\n  preferredRoles: [\n    'Junior Frontend Developer',\n    'Junior Full Stack Developer',\n    'React Developer Fresher',\n    'Junior Java Developer',\n    'Software Engineer Fresher',\n    'Graduate Software Engineer'\n  ],\n  locations: ['Hyderabad', 'Bangalore', 'Remote']\n};\n\nconst searchQueries = [];\n\nfor (const role of resumeProfile.preferredRoles) {\n  for (const loc of resumeProfile.locations) {\n    searchQueries.push({\n      query: role + ' ' + loc,\n      role: role,\n      location: loc,\n      skills: resumeProfile.skills,\n      resumeSummary: 'Fresher B.Tech CSE (AI & ML) graduate with hands-on project experience in React, Spring Boot, Node.js, MongoDB, MySQL. Built 3 full-stack projects including a coding platform, e-commerce site, and movie booking system. AI/ML knowledge including NLP and RAG. Looking for entry-level software developer roles.'\n    });\n  }\n}\n\nreturn searchQueries.map(function(q) {\n  return { json: q };\n});"
+      },
+      "id": "6ed17bec-0cad-4b64-a939-6df3f00d75c1",
+      "name": "Resume Profile & Queries",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -240,
+        112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google_jobs"
+            },
+            {
+              "name": "q",
+              "value": "=={{ $json.query }}"
+            },
+            {
+              "name": "location",
+              "value": "=Hyderabad, Telangana, India"
+            },
+            {
+              "name": "api_key",
+              "value": "YOUR_SERPAPI_KEY"
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            },
+            {
+              "name": "gl",
+              "value": "in"
+            },
+            {
+              "name": "google_domain",
+              "value": "google.co.in"
+            },
+            {
+              "name": "chips",
+              "value": "date_posted:today"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "925105e9-bad6-47a4-b763-5c251baeabd3",
+      "name": "SerpAPI Google Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "url": "https://api.apify.com/v2/datasets/XfsBWZgHk9ofKOT3Q/items?token=YOUR_APIFY_TOKEN",
+        "options": {}
+      },
+      "id": "a147abfa-ac18-44ac-92b3-7a19a2b9cf7d",
+      "name": "Naukri via Apify",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        0,
+        224
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n\n  // Handle SerpAPI response\n  if (data.jobs_results && Array.isArray(data.jobs_results)) {\n    for (const job of data.jobs_results) {\n      items.push({\n        title: job.title || 'No Title',\n        company: job.company_name || 'Unknown',\n        location: job.location || 'Not specified',\n        description: job.description || '',\n        link: job.share_link || '',\n        source: 'Google Jobs',\n        postedAt: job.detected_extensions?.posted_at || 'Recent',\n        jobId: job.job_id || job.title + job.company_name\n      });\n    }\n  }\n\n  // Handle Naukri/Apify response (array of jobs)\n  if (Array.isArray(data)) {\n    for (const job of data) {\n      items.push({\n        title: job.title || 'No Title',\n        company: job.companyName || job.company || 'Unknown',\n        location: job.location || 'Not specified',\n        description: job.jobDescription || job.description || '',\n        link: job.jdURL || job.url || '',\n        source: 'Naukri',\n        postedAt: job.createdDate || 'Recent',\n        jobId: job.jobId || job.jdURL || job.title\n      });\n    }\n  }\n\n  // Handle single Naukri job object\n  if (data.title && data.jdURL) {\n    items.push({\n      title: data.title || 'No Title',\n      company: data.companyName || 'Unknown',\n      location: data.location || 'Not specified',\n      description: data.jobDescription || '',\n      link: data.jdURL || '',\n      source: 'Naukri',\n      postedAt: data.createdDate || 'Recent',\n      jobId: data.jobId || data.jdURL\n    });\n  }\n}\n\n// Deduplicate by jobId\nconst seen = new Set();\nconst unique = items.filter(function(job) {\n  if (!job.jobId || seen.has(job.jobId)) return false;\n  seen.add(job.jobId);\n  return true;\n});\n\nif (unique.length === 0) {\n  return [{ json: { error: 'No jobs found', raw: $input.all()[0]?.json } }];\n}\n\nreturn unique.map(function(job) {\n  return { json: job };\n});"
+      },
+      "id": "a161cb7b-5759-41c9-bb61-32740b55d1ea",
+      "name": "Normalize & Deduplicate",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  // Gemini response format\n  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n  \n  let scoring = {};\n  try {\n    const clean = text.replace(/```json|```/g, '').trim();\n    scoring = JSON.parse(clean);\n  } catch(e) {\n    scoring = { score: 0, verdict: 'SKIP', matched: [], missing: [], advice: '' };\n  }\n\n  items.push({\n    json: {\n      ...item.json,\n      score: scoring.score || 0,\n      matched: scoring.matched || [],\n      missing: scoring.missing || [],\n      verdict: scoring.verdict || 'SKIP',\n      advice: scoring.advice || ''\n    }\n  });\n}\n\nreturn items;"
+      },
+      "id": "29ff72a2-76d0-4b37-8b25-d63e6d9a26c6",
+      "name": "Parse AI Score",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        960,
+        112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition_score",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1ed0ba94-4f13-424b-80d2-8282a4e916ae",
+      "name": "Score ≥ 70%?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1200,
+        112
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {},
+      "id": "e123150f-e462-46c2-9279-cd27bd04510d",
+      "name": "Format Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1440,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "disable_web_page_preview": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "09f7be4a-0445-4e59-b399-1d4b058e80c2",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1680,
+        0
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "773af15e-9f54-4fcc-828a-8c8b023a012f",
+      "credentials": {
+        "telegramApi": {
+          "id": "7erHI9dwAHwBltdS",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "3c5a3c39-acd6-4088-b15b-7201e3df9f59",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const item of $input.all()) {\n  const job = item.json;\n  \n  const prompt = `Score this job for Nikhil (fresher 2026, B.Tech CSE AI & ML).\nSkills: React, JavaScript, Node.js, Spring Boot, MongoDB, MySQL, Java, Python, Git, Tailwind CSS\nLooking for: Entry-level fresher developer roles\n\nJOB:\nTitle: ${job.title || 'N/A'}\nCompany: ${job.company || 'N/A'}\nDescription: ${(job.description || '').slice(0, 400)}\n\nReply ONLY with valid JSON no extra text:\n{\"score\":75,\"matched\":[\"React\"],\"missing\":[\"Docker\"],\"verdict\":\"APPLY_NOW\",\"advice\":\"Apply directly\"}`;\n\n  let scoring = {};\n  \n  try {\n    const response = await $helpers.httpRequest({\n      method: 'POST',\n      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=YOUR_GEMINI_API_KEY',\n      headers: { \n        'Content-Type': 'application/json' \n      },\n      body: JSON.stringify({\n        contents: [{ \n          parts: [{ \n            text: prompt \n          }] \n        }]\n      })\n    });\n\n    const rawText = response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n    const clean = rawText.replace(/```json/g, '').replace(/```/g, '').trim();\n    scoring = JSON.parse(clean);\n\n  } catch(e) {\n    scoring = { \n      score: 0, \n      verdict: 'SKIP', \n      matched: [], \n      missing: [], \n      advice: 'Error scoring this job' \n    };\n  }\n\n  items.push({\n    json: {\n      title: job.title || '',\n      company: job.company || '',\n      location: job.location || '',\n      description: job.description || '',\n      link: job.link || '',\n      source: job.source || '',\n      postedAt: job.postedAt || '',\n      score: scoring.score || 0,\n      matched: scoring.matched || [],\n      missing: scoring.missing || [],\n      verdict: scoring.verdict || 'SKIP',\n      advice: scoring.advice || ''\n    }\n  });\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        112
+      ],
+      "id": "d984ee98-2294-4575-9468-5b8fd19cc65b",
+      "name": "AI Resume Scorer"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 3 Hours": {
+      "main": [
+        [
+          {
+            "node": "Resume Profile & Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Profile & Queries": {
+      "main": [
+        [
+          {
+            "node": "SerpAPI Google Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Naukri via Apify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI Google Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Naukri via Apify": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Normalize & Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "AI Resume Scorer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Score": {
+      "main": [
+        [
+          {
+            "node": "Score ≥ 70%?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score ≥ 70%?": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Normalize & Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Resume Scorer": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5469c123-3e5c-4fb0-9adf-bebe600472d1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "28d8c34611e6feefc799423f399799baf5b10c47e69fa31ee68cc98c325a7e28"
+  },
+  "id": "58YOdINKydYdYomT",
+  "tags": []
+}
