@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n_job_bot
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # ─── Core ───────────────────────────────────────────────────────────
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_BLOCK_ENV_VARS_IN_EXPRESSIONS=false
+
+      # ─── Timezone ───────────────────────────────────────────────────────
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - TZ=Asia/Kolkata
+
+      # ─── Telegram Bot ───────────────────────────────────────────────────
+      # Get from @BotFather on Telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      # Your personal Telegram chat ID — send /start to @userinfobot to get it
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+
+      # ─── AI Scoring (Anthropic Claude) ──────────────────────────────────
+      # Get from https://console.anthropic.com
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+      # ─── Job Search APIs ────────────────────────────────────────────────
+      # SerpAPI: https://serpapi.com (free tier: 100 searches/month)
+      - SERPAPI_KEY=${SERPAPI_KEY}
+      # Apify: https://apify.com (for Naukri, Internshala, etc.)
+      - APIFY_TOKEN=${APIFY_TOKEN}
+
+      # ─── Persistence ────────────────────────────────────────────────────
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
