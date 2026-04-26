@@ -54,7 +54,7 @@
             },
             {
               "name": "api_key",
-              "value": "YOUR_SERPAPI_KEY"
+              "value": "={{$env.SERPAPI_KEY}}"
             },
             {
               "name": "hl",
@@ -87,7 +87,7 @@
     },
     {
       "parameters": {
-        "url": "https://api.apify.com/v2/datasets/XfsBWZgHk9ofKOT3Q/items?token=YOUR_APIFY_TOKEN",,
+        "url": "=https://api.apify.com/v2/datasets/XfsBWZgHk9ofKOT3Q/items?token={{$env.APIFY_TOKEN}}",
         "options": {}
       },
       "id": "921ecf45-b301-4e42-b7ed-6838ca497b74",
@@ -127,7 +127,7 @@
     },
     {
       "parameters": {
-        "chatId": "=5796610132",
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
         "text": "=={{ $json.message }}",
         "additionalFields": {
           "disable_web_page_preview": false,
