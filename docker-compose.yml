@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n_job_bot
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file:
+      - .env
+    environment:
+      # ─── Core ───────────────────────────────────────────────────────────
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_BLOCK_ENV_VARS_IN_EXPRESSIONS=false
+      - N8N_BLOCK_ENV_VAR_IN_EXPRESSIONS=false
+      - N8N_HIDE_VARIABLES_IN_EXPRESSION_EDITOR=false
+      - N8N_VARIABLES_IN_EXPRESSIONS_BLOCKLIST=
+
+      # ─── Timezone ───────────────────────────────────────────────────────
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - TZ=Asia/Kolkata
+
+      # ─── Persistence ────────────────────────────────────────────────────
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
