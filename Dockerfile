@@ -1,7 +1,14 @@
 FROM n8nio/n8n:latest
 
-# Render provides a PORT environment variable, tell n8n to use it
-ENV N8N_PORT=$PORT
+# Switch to root to create data directory
+USER root
+RUN mkdir -p /data && chown -R node:node /data
 
-# Disable external task runner to prevent connection errors on platforms like Render
-ENV N8N_TASKS_RUNNER_ENABLED=false
+# Switch back to node user
+USER node
+
+# n8n listens on 5678
+EXPOSE 5678
+
+# Start n8n
+CMD ["n8n", "start"]

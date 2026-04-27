@@ -1,4 +1,3 @@
+workflow.json
 .env
-*.log
-n8n_data/
-.DS_Store
+*.sqlite
